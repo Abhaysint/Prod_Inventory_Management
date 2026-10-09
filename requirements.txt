@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+greenlet
+alembic
+psycopg[binary]
+pyjwt
+bcrypt
+python-multipart
+email-validator

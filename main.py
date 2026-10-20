@@ -40,7 +40,7 @@ app.add_middleware(
 )
 
 # Include routes
-app.include_router(router)
+# app.include_router(router)  # DISABLED: duplicate routes shadow canonical ones below
 
 # ============ HEALTH ============
 

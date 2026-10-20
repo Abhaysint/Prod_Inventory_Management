@@ -6,6 +6,7 @@ __pycache__/
 env/
 venv/
 .env
+.agents
 
 # Docker
 .dockerignore
@@ -16,3 +17,11 @@ venv/
 
 # Database (if using local sqlite, though we use Postgres in Docker)
 *.db
+
+# Node / Frontend
+node_modules/
+dist/
+.env.local
+*.tsbuildinfo
+
+

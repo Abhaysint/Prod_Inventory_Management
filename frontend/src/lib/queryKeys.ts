@@ -3,12 +3,14 @@ export const queryKeys = {
     me: () => ["auth", "me"] as const,
   },
   categories: {
+    root: () => ["categories"] as const,
     all: () => ["categories", "all"] as const,
     list: (params?: { page?: number; page_size?: number }) =>
       ["categories", "list", params] as const,
     detail: (id: number) => ["categories", "detail", id] as const,
   },
   products: {
+    root: () => ["products"] as const,
     all: () => ["products", "all"] as const,
     list: (params?: { page?: number; page_size?: number }) =>
       ["products", "list", params] as const,
@@ -18,9 +20,11 @@ export const queryKeys = {
     detail: (id: number) => ["products", "detail", id] as const,
   },
   stock: {
+    root: () => ["stock"] as const,
     detail: (productId: number) => ["stock", productId] as const,
   },
   transactions: {
+    root: () => ["transactions"] as const,
     byProduct: (productId: number) => ["transactions", productId] as const,
   },
 } as const;

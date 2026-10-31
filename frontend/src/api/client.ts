@@ -3,6 +3,14 @@ import { queryClient } from "@/lib/queryClient";
 
 export const TOKEN_STORAGE_KEY = "stocksense_token";
 
+type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler;
+}
+
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
   headers: {
@@ -32,6 +40,7 @@ apiClient.interceptors.response.use(
       const isLoginRequest = originalRequestUrl.includes("/auth/login");
 
       if (!isLoginRequest) {
+        unauthorizedHandler?.();
         localStorage.removeItem(TOKEN_STORAGE_KEY);
         queryClient.clear();
 

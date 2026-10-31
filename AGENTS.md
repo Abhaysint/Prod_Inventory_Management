@@ -273,7 +273,7 @@ The frontend theme is locked to **Arctic Frost** from `.agents/skills/theme-fact
    Correct Section 3 of this file with what you found.
 2. **Plan.** Write `docs/frontend-plan.md`: files to create per step, in order. Wait for approval.
 3. **Implement.** One page per step. Run `cd frontend && npm run dev` with the backend up and exercise it.
-4. **Verify.** `cd frontend && npx tsc --noEmit` clean, `cd frontend && npm run build` clean, page exercised in a browser
+4. **Verify.** `cd frontend && npx tsc -b` clean, `cd frontend && npm run build` clean, page exercised in a browser
    against real data, 401/403/422 paths checked.
 5. **Report.** What works, what is unverified, what the backend blocks.
 
@@ -283,10 +283,17 @@ The frontend theme is locked to **Arctic Frost** from `.agents/skills/theme-fact
 docker compose up -d            # backend + postgres (services: app, db)
 docker compose logs -f app      # backend logs
 cd frontend && npm run dev      # frontend dev server
-cd frontend && npx tsc --noEmit # must pass before "done"
+cd frontend && npx tsc -b       # must pass before "done" — see note below
 cd frontend && npm run build    # must pass before "done"
 cd frontend && npm run lint     # must pass before "done"
 ```
+
+> **Why `tsc -b` and not `tsc --noEmit`:** `frontend/tsconfig.json` uses
+> `files: []` + `references: [...]` (composite/project-references setup). A bare
+> `tsc --noEmit` against that root config type-checks **zero** files — it is
+> vacuously green even when every source file is broken. `tsc -b` walks the
+> project graph and actually checks each referenced project. `npm run build`
+> already runs `tsc -b && vite build`.
 
 ### Definition of done (per page)
 

@@ -19,6 +19,15 @@ export function usePaginatedCategories(page: number, pageSize: number) {
   });
 }
 
+export function useCategoryList() {
+  return useQuery({
+    queryKey: queryKeys.categories.list({ page: 1, page_size: 100 }),
+    queryFn: () => listCategories(1, 100),
+    staleTime: CATEGORIES_STALE_TIME,
+    select: (data): import("@/types/api").CategoryRead[] => data.items,
+  });
+}
+
 export function useCreateCategory() {
   const queryClient = useQueryClient();
   return useMutation({

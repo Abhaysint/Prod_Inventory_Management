@@ -77,7 +77,7 @@ export function LowStockAlert({
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <div className="relative overflow-x-auto rounded-lg border border-border bg-card">
           <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -97,7 +97,6 @@ export function LowStockAlert({
                   Shortage
                 </th>
                 <th className="px-4 py-3 text-right" scope="col">
-                  <span className="sr-only">Actions</span>
                   Actions
                 </th>
               </tr>

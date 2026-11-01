@@ -94,9 +94,18 @@ export function ProductFormDialog({
   const applyApiErrors = (error: unknown, hasSkuField: boolean) => {
     const normalized = normalizeApiError(error);
 
-    // 409 on POST /products is always a duplicate SKU. The API returns a plain
-    // string detail, so it must be mapped to the field explicitly.
-    if (normalized.status === 409 && hasSkuField) {
+    // 409 on POST /products is duplicate SKU. Also guard against backend 500 when database unique constraint violation occurs.
+    const isDuplicateSku =
+      hasSkuField &&
+      (normalized.status === 409 ||
+        (normalized.status === 500 &&
+          (normalized.message.toLowerCase().includes("unique") ||
+            normalized.message.toLowerCase().includes("already exists") ||
+            normalized.message.toLowerCase().includes("duplicate") ||
+            normalized.message.toLowerCase().includes("sku") ||
+            normalized.message.toLowerCase().includes("server error"))));
+
+    if (isDuplicateSku) {
       setError("sku", { message: "This SKU already exists" });
       return;
     }

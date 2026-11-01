@@ -73,7 +73,7 @@ export default function CategoriesPage() {
         />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
+          <div className="relative overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full min-w-[540px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">

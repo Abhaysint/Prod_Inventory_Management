@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Loader2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { normalizeApiError } from "@/lib/errors";
@@ -66,7 +66,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <main className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm space-y-8">
         <header className="flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-primary text-primary-foreground shadow-sm">
@@ -84,9 +84,9 @@ export default function LoginPage() {
 
         <Card className="border-border/80 shadow-sm bg-card">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-bold tracking-tight">
+            <h1 className="text-xl font-bold leading-none tracking-tight">
               Sign in
-            </CardTitle>
+            </h1>
             <CardDescription className="text-sm text-muted-foreground">
               Enter your credentials to access your account.
             </CardDescription>
@@ -154,6 +154,6 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

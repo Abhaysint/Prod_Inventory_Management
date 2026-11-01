@@ -20,7 +20,7 @@ import {
   createCategorySchema,
   type CreateCategoryValues,
 } from "./categorySchema";
-import { useCreateCategory } from "./useCategories";
+import { useCategoryList, useCreateCategory } from "./useCategories";
 
 interface CategoryFormDialogProps {
   open: boolean;
@@ -37,6 +37,7 @@ export function CategoryFormDialog({
   onOpenChange,
 }: CategoryFormDialogProps) {
   const createMutation = useCreateCategory();
+  const existingCategories = useCategoryList();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -62,7 +63,17 @@ export function CategoryFormDialog({
   const applyApiErrors = (error: unknown) => {
     const normalized = normalizeApiError(error);
 
-    if (normalized.status === 409) {
+    // 409 conflict, or backend 500 when database unique constraint violation occurs
+    const isConflict =
+      normalized.status === 409 ||
+      (normalized.status === 500 &&
+        (normalized.message.toLowerCase().includes("unique") ||
+          normalized.message.toLowerCase().includes("already exists") ||
+          normalized.message.toLowerCase().includes("duplicate") ||
+          normalized.message.toLowerCase().includes("integrity") ||
+          normalized.message.toLowerCase().includes("server error")));
+
+    if (isConflict) {
       setError("name", { message: "A category with this name already exists" });
       return;
     }
@@ -73,6 +84,7 @@ export function CategoryFormDialog({
         description: normalized.message,
         variant: "destructive",
       });
+      return;
     }
 
     let mapped = false;
@@ -90,8 +102,19 @@ export function CategoryFormDialog({
 
   const onSubmit = async (values: CreateCategoryValues) => {
     setSubmitError(null);
+    const trimmedName = values.name.trim();
+
+    // Client-side conflict check: catch duplicate names immediately before hitting backend
+    const isDuplicate = (existingCategories.data ?? []).some(
+      (c) => c.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (isDuplicate) {
+      setError("name", { message: "A category with this name already exists" });
+      return;
+    }
+
     const body: CategoryCreate = {
-      name: values.name.trim(),
+      name: trimmedName,
       description:
         values.description.trim() === "" ? null : values.description.trim(),
     };

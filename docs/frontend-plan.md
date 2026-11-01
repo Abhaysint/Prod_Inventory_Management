@@ -1,7 +1,7 @@
-# Frontend Implementation Plan (Steps 1–3)
+# Frontend Implementation Plan (Steps 1–10)
 
 > Based on verified backend contract at `localhost:8000` and decisions recorded in [AGENTS.md](file:///c:/dev/inventory_management_prod/AGENTS.md).
-> Covering **Step 1 (Scaffold)**, **Step 2 (/login)**, and **Step 3 (App Shell)**.
+> Covering **Steps 1–9 (Core Application & Polish — Completed)** and **Step 10 (Pre-Deployment Environment, API Variable Hardening & Secret Hygiene)**.
 
 ### Plan Amendments & User Corrections
 1. **Login Zod Schema**: Required/non-empty strings only (`.trim().min(1)` for username, `.min(1)` for password). Min-3 and min-8 rules are removed as they are registration validation rules that block valid credentials.
@@ -298,3 +298,152 @@ src/
 - [ ] 401 response from any API automatically redirects to `/login`.
 - [ ] Responsive pass: sidebar collapses on viewports < 768px with functional mobile drawer toggle.
 - [ ] `npx tsc --noEmit` and `npm run build` pass cleanly.
+
+---
+
+## Steps 4–9: Core Feature Pages & Polish (Completed Summary)
+
+- **Step 4 (`/products`)**: Client-side category join (`id -> name` Map) + per-row stock queries (`useQueries`), search & category filter (hiding pagination when active), create/edit modal with separate Zod schemas (`sku` and `category_id` immutable on edit), and soft deactivation (`PUT /products/{id}` with `{ is_active: false }`).
+- **Step 5 (`/categories`)**: Paginated categories table + create dialog with client-side case-insensitive duplicate check and `409`/`500` unique constraint mapping (`"A category with this name already exists"`).
+- **Step 6 (`/` Dashboard)**: KPI stat cards (Total Active Products, Categories, Low Stock Items) + sorted low-stock alert table with `Out` / `Low` semantic badges and direct action links.
+- **Step 7 (`/stock-adjustment`)**: Product selector synced with `?productId=`, live stock summary card, real-time delta badge ($\Delta = \text{new} - \text{current}$), reason presets, and multi-key cache invalidation.
+- **Step 8 (`/transactions/:productId`)**: Per-product chronological audit trail, transaction type filter, and Record Transaction modal with client-side outbound overdraft guard (`quantity > currentStock`).
+- **Step 9 (Polish, Mobile 375px Fix & Accessibility Pass)**: Fixed `.sr-only` absolute positioning overflow on tables (`relative overflow-x-auto`), mobile navigation drawer header alignment, semantic `<main>` and `<h1>` landmarks on `/login`, accessible filter labels, and verified `scrollWidth === 375px` across all routes.
+
+---
+
+## Step 10: Pre-Deployment Environment, API Variable Hardening & Secret Hygiene
+
+### Objective
+Prepare the StockSense repository for production deployment by eliminating hardcoded API URLs from compiled production bundles, centralizing and sanitizing all environment variables, ensuring no `.env` or secret files can ever be committed to GitHub, and adding SPA routing rewrite rules so deep links (`/products`, `/transactions/:productId`) never 404 on static hosts (Vercel, Netlify, Render, Cloudflare Pages).
+
+---
+
+### Pre-Deployment Audit Findings (Current Risks to Fix)
+
+1. **Gitignore Gap in `frontend/.gitignore` and Root `.gitignore`**:
+   - `frontend/.gitignore` currently ignores **only** `.env.local`. If `.env.production`, `.env.staging`, or `.env.development.local` is created during deployment setup, Git will track and push it to GitHub.
+   - Root `.gitignore` ignores `.env` only, missing `.env.*` variants.
+2. **Hardcoded `http://localhost:8000` Fallback in `frontend/src/api/client.ts`**:
+   - Line 15 currently sets `baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"`.
+   - **Risk 1 (Silent Production Misconfiguration)**: If `VITE_API_BASE_URL` is forgotten in the hosting platform's environment settings, the production bundle silently calls `http://localhost:8000` inside visitors' browsers instead of failing fast with a clear configuration message.
+   - **Risk 2 (Trailing Slash Double-Slash Bug)**: If a deployment environment sets `VITE_API_BASE_URL=https://api.example.com/` (with a trailing slash), Axios requests to `/products` resolve to `https://api.example.com//products`, triggering `307 Temporary Redirect` or CORS preflight failures behind reverse proxies.
+3. **SPA Deep-Link Refresh 404s on Production Static Hosts**:
+   - React Router (`createBrowserRouter`) handles `/login`, `/products`, `/categories`, `/stock-adjustment`, and `/transactions/:productId` client-side. Without host rewrite config (`public/_redirects` and `vercel.json`), refreshing the browser on `/products` in production returns an HTTP 404 from the CDN.
+
+---
+
+### Broken-Down Implementation Plan (Sub-Steps 10.1 – 10.6)
+
+#### Sub-Step 10.1: Harden `.gitignore` Files & Verify Git Index Hygiene
+- **Files to Modify**:
+  - `.gitignore` (root)
+  - `frontend/.gitignore`
+- **Changes**:
+  - Ignore every `.env` variant across both root and `frontend/`:
+    ```gitignore
+    # Environment variables & secrets (never commit)
+    .env
+    .env.*
+    !.env.example
+    ```
+  - Explicitly keep `!.env.example` tracked so collaborators and deployment guides know which variables are required without exposing real URLs or credentials.
+- **Check**:
+  - Run `git ls-files "*env*"` and verify only `alembic/env.py`, `frontend/.env.example`, and `frontend/src/vite-env.d.ts` are tracked.
+  - Run `git status --ignored` to confirm `frontend/.env` and any `.env.production` files are strictly ignored.
+
+#### Sub-Step 10.2: Create Centralized Environment Module (`frontend/src/lib/env.ts`)
+- **Files to Create / Modify**:
+  - `frontend/src/lib/env.ts` (new)
+  - `frontend/src/vite-env.d.ts` (update typing)
+- **Specifications**:
+  - Create a single, strictly typed `env.ts` module that reads, validates, and normalizes `import.meta.env`:
+    1. **Sanitize Trailing Slashes**: Strip trailing slashes (`.trim().replace(/\/+$/, "")`) from `VITE_API_BASE_URL` so `https://api.stocksense.com/` and `https://api.stocksense.com` work identically without double-slash route bugs.
+    2. **Environment-Aware Fallback**:
+       - In development (`import.meta.env.DEV === true`), default to `http://localhost:8000` if `VITE_API_BASE_URL` is unset so local development works out of the box.
+       - In production (`import.meta.env.PROD === true`), require `VITE_API_BASE_URL` to be provided at build time (or support relative `/api` reverse-proxy path if configured) and log an explicit diagnostic error if missing, ensuring `http://localhost:8000` is never used in production.
+    3. **Export Immutable `ENV` Object**:
+       - `ENV.API_BASE_URL`: normalized base URL string
+       - `ENV.IS_PROD`: boolean
+       - `ENV.IS_DEV`: boolean
+       - `ENV.MODE`: string
+
+#### Sub-Step 10.3: Decouple `apiClient` & Centralize API Endpoints
+- **Files to Modify**:
+  - `frontend/src/api/client.ts`
+  - `frontend/src/api/endpoints.ts` (new — centralized endpoint path constants)
+  - `frontend/src/api/auth.ts`
+  - `frontend/src/api/products.ts`
+  - `frontend/src/api/categories.ts`
+  - `frontend/src/api/stock.ts`
+  - `frontend/src/api/transactions.ts`
+- **Specifications**:
+  - Replace `import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"` in `frontend/src/api/client.ts` with `ENV.API_BASE_URL` from `@/lib/env`.
+  - Create `frontend/src/api/endpoints.ts` exporting `API_ENDPOINTS`:
+    ```ts
+    export const API_ENDPOINTS = {
+      auth: {
+        login: "/auth/login",
+        me: "/auth/me",
+      },
+      products: {
+        root: "/products",
+        search: "/products/search",
+        lowStock: "/products/low-stock",
+        byId: (id: number) => `/products/${id}`,
+      },
+      categories: {
+        root: "/categories",
+        byId: (id: number) => `/categories/${id}`,
+      },
+      stock: {
+        byProduct: (productId: number) => `/stock/${productId}`,
+        adjust: (productId: number) => `/stock/${productId}/adjust`,
+      },
+      transactions: {
+        root: "/transactions",
+        byProduct: (productId: number) => `/transactions/${productId}`,
+      },
+    } as const;
+    ```
+  - Update `auth.ts`, `products.ts`, `categories.ts`, `stock.ts`, and `transactions.ts` to reference `API_ENDPOINTS` so not a single URL path or host string is hardcoded across API modules or components.
+
+#### Sub-Step 10.4: Update `.env.example` Template for Deployment Clarity
+- **Files to Modify**:
+  - `frontend/.env.example`
+- **Specifications**:
+  - Document required build-time variables clearly with examples for local development and cloud production, reminding developers that `VITE_*` variables are embedded at build time and must never contain private secrets:
+    ```dotenv
+    # Base URL for the StockSense FastAPI backend (no trailing slash)
+    # Local development: http://localhost:8000
+    # Production example: https://stocksense-api.yourdomain.com
+    VITE_API_BASE_URL=http://localhost:8000
+    ```
+
+#### Sub-Step 10.5: Add Production SPA Routing Rewrite Configs
+- **Files to Create**:
+  - `frontend/public/_redirects` (for Netlify, Render Static Sites, Cloudflare Pages)
+  - `frontend/vercel.json` (for Vercel deployments)
+- **Specifications**:
+  - `frontend/public/_redirects`:
+    ```text
+    /*    /index.html   200
+    ```
+  - `frontend/vercel.json`:
+    ```json
+    {
+      "rewrites": [
+        { "source": "/(.*)", "destination": "/index.html" }
+      ]
+    }
+    ```
+
+#### Sub-Step 10.6: Verification & Bundle Audit Checklist
+- [ ] **Git Leak Check**: `git status --ignored` and `git ls-files` confirm `.env`, `.env.local`, and `.env.production` are untracked and ignored.
+- [ ] **Source Code Hardcode Scan**: Search all files in `frontend/src/` for `http://`, `https://`, and `localhost` — only `frontend/src/lib/env.ts` (dev-only fallback) may reference `localhost:8000`.
+- [ ] **Production Bundle Inspection**: Run `VITE_API_BASE_URL=https://api.stocksense.example.com npm run build` and search `frontend/dist/assets/*.js` to verify `https://api.stocksense.example.com` is injected and `localhost:8000` is completely absent from the production bundle.
+- [ ] **Type-Check, Lint & Build**:
+  - `cd frontend && npx tsc -b` passes with 0 errors.
+  - `cd frontend && npm run lint` passes with 0 errors and 0 warnings.
+  - `cd frontend && npm run build` succeeds cleanly.
+

@@ -1,5 +1,7 @@
 import axios from "axios";
 import { queryClient } from "@/lib/queryClient";
+import { ENV } from "@/lib/env";
+import { API_ENDPOINTS } from "@/api/endpoints";
 
 export const TOKEN_STORAGE_KEY = "stocksense_token";
 
@@ -12,7 +14,7 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): voi
 }
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+  baseURL: ENV.API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -37,7 +39,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       const originalRequestUrl = error.config?.url || "";
-      const isLoginRequest = originalRequestUrl.includes("/auth/login");
+      const isLoginRequest = originalRequestUrl.includes(API_ENDPOINTS.auth.login);
 
       if (!isLoginRequest) {
         unauthorizedHandler?.();

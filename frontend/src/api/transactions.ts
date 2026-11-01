@@ -1,4 +1,5 @@
 import { apiClient } from "@/api/client";
+import { API_ENDPOINTS } from "@/api/endpoints";
 import type { TransactionCreate, TransactionRead } from "@/types/api";
 
 /**
@@ -9,7 +10,7 @@ export async function listProductTransactions(
   productId: number
 ): Promise<TransactionRead[]> {
   const { data } = await apiClient.get<TransactionRead[]>(
-    `/transactions/${productId}`
+    API_ENDPOINTS.transactions.byProduct(productId)
   );
   return data;
 }
@@ -18,9 +19,8 @@ export async function createTransaction(
   body: TransactionCreate
 ): Promise<TransactionRead> {
   const { data } = await apiClient.post<TransactionRead>(
-    "/transactions",
+    API_ENDPOINTS.transactions.root,
     body
   );
   return data;
 }
-

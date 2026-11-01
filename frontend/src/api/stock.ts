@@ -1,4 +1,5 @@
 import { apiClient } from "@/api/client";
+import { API_ENDPOINTS } from "@/api/endpoints";
 import type { StockAdjustment, StockRead, TransactionRead } from "@/types/api";
 
 /**
@@ -6,7 +7,9 @@ import type { StockAdjustment, StockRead, TransactionRead } from "@/types/api";
  * one of these per visible product id and caches under ['stock', productId].
  */
 export async function getStock(productId: number): Promise<StockRead> {
-  const { data } = await apiClient.get<StockRead>(`/stock/${productId}`);
+  const { data } = await apiClient.get<StockRead>(
+    API_ENDPOINTS.stock.byId(productId)
+  );
   return data;
 }
 
@@ -20,7 +23,7 @@ export async function adjustStock(
   body: StockAdjustment
 ): Promise<TransactionRead> {
   const { data } = await apiClient.post<TransactionRead>(
-    `/stock/${productId}/adjust`,
+    API_ENDPOINTS.stock.adjust(productId),
     body
   );
   return data;

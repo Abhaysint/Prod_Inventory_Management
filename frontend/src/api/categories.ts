@@ -1,4 +1,5 @@
 import { apiClient } from "@/api/client";
+import { API_ENDPOINTS } from "@/api/endpoints";
 import type {
   CategoryCreate,
   CategoryRead,
@@ -15,20 +16,25 @@ export async function listCategories(
   pageSize: number
 ): Promise<PaginatedResponse<CategoryRead>> {
   const { data } = await apiClient.get<PaginatedResponse<CategoryRead>>(
-    "/categories",
+    API_ENDPOINTS.categories.root,
     { params: { page, page_size: pageSize } }
   );
   return data;
 }
 
 export async function getCategory(id: number): Promise<CategoryRead> {
-  const { data } = await apiClient.get<CategoryRead>(`/categories/${id}`);
+  const { data } = await apiClient.get<CategoryRead>(
+    API_ENDPOINTS.categories.byId(id)
+  );
   return data;
 }
 
 export async function createCategory(
   body: CategoryCreate
 ): Promise<CategoryRead> {
-  const { data } = await apiClient.post<CategoryRead>("/categories", body);
+  const { data } = await apiClient.post<CategoryRead>(
+    API_ENDPOINTS.categories.root,
+    body
+  );
   return data;
 }

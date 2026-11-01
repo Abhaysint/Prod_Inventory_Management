@@ -1,5 +1,13 @@
 # Frontend / Node
 node_modules/
 dist/
-.env.local
 *.tsbuildinfo
+
+# Environment variables & local configurations (never commit secrets)
+.env
+.env.*
+.env.local
+.env.production
+.env.staging
+.env.development.local
+!.env.example

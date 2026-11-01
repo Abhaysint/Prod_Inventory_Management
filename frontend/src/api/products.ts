@@ -1,4 +1,5 @@
 import { apiClient } from "@/api/client";
+import { API_ENDPOINTS } from "@/api/endpoints";
 import type {
   LowStockRead,
   PaginatedResponse,
@@ -31,9 +32,12 @@ export async function listProducts(
   page: number,
   pageSize: number
 ): Promise<ProductListResult> {
-  const { data } = await apiClient.get<PaginatedResponse<ProductRead>>("/products", {
-    params: { page, page_size: pageSize },
-  });
+  const { data } = await apiClient.get<PaginatedResponse<ProductRead>>(
+    API_ENDPOINTS.products.root,
+    {
+      params: { page, page_size: pageSize },
+    }
+  );
   return {
     items: data.items,
     total: data.total,
@@ -45,13 +49,16 @@ export async function listProducts(
 export async function searchProducts(
   params: ProductSearchParams
 ): Promise<ProductListResult> {
-  const { data } = await apiClient.get<ProductRead[]>("/products/search", {
-    params: {
-      name: params.name?.trim() || undefined,
-      sku: params.sku?.trim() || undefined,
-      category_id: params.categoryId ?? undefined,
-    },
-  });
+  const { data } = await apiClient.get<ProductRead[]>(
+    API_ENDPOINTS.products.search,
+    {
+      params: {
+        name: params.name?.trim() || undefined,
+        sku: params.sku?.trim() || undefined,
+        category_id: params.categoryId ?? undefined,
+      },
+    }
+  );
   // Bare array: there is no pagination envelope, so total === items.length.
   return {
     items: data,
@@ -62,12 +69,17 @@ export async function searchProducts(
 }
 
 export async function getProduct(id: number): Promise<ProductRead> {
-  const { data } = await apiClient.get<ProductRead>(`/products/${id}`);
+  const { data } = await apiClient.get<ProductRead>(
+    API_ENDPOINTS.products.byId(id)
+  );
   return data;
 }
 
 export async function createProduct(body: ProductCreate): Promise<ProductRead> {
-  const { data } = await apiClient.post<ProductRead>("/products", body);
+  const { data } = await apiClient.post<ProductRead>(
+    API_ENDPOINTS.products.root,
+    body
+  );
   return data;
 }
 
@@ -76,7 +88,10 @@ export async function updateProduct(
   id: number,
   body: ProductUpdate
 ): Promise<ProductRead> {
-  const { data } = await apiClient.put<ProductRead>(`/products/${id}`, body);
+  const { data } = await apiClient.put<ProductRead>(
+    API_ENDPOINTS.products.byId(id),
+    body
+  );
   return data;
 }
 
@@ -86,9 +101,12 @@ export async function updateProduct(
  * Irreversible from the UI — product reactivation is out of scope.
  */
 export async function deactivateProduct(id: number): Promise<ProductRead> {
-  const { data } = await apiClient.put<ProductRead>(`/products/${id}`, {
-    is_active: false,
-  });
+  const { data } = await apiClient.put<ProductRead>(
+    API_ENDPOINTS.products.byId(id),
+    {
+      is_active: false,
+    }
+  );
   return data;
 }
 
@@ -97,6 +115,8 @@ export async function deactivateProduct(id: number): Promise<ProductRead> {
  * where quantity_on_hand <= reorder_level for active products.
  */
 export async function listLowStockProducts(): Promise<LowStockRead[]> {
-  const { data } = await apiClient.get<LowStockRead[]>("/products/low-stock");
+  const { data } = await apiClient.get<LowStockRead[]>(
+    API_ENDPOINTS.products.lowStock
+  );
   return data;
 }

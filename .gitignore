@@ -5,7 +5,12 @@ __pycache__/
 .venv/
 env/
 venv/
+
+# Environment variables & secrets (never commit)
 .env
+.env.*
+!.env.example
+
 .agents
 
 # Docker

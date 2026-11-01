@@ -7,6 +7,7 @@ from app.schemas import (
     TransactionCreate, StockRead, StockAdjustment
 )
 from fastapi import HTTPException
+from app.email_service import send_low_stock_email
 
 # ============ CATEGORY SERVICE ============
 
@@ -193,7 +194,10 @@ class StockService:
     @staticmethod
     async def adjust_stock(db: AsyncSession, product_id: int, adjustment: StockAdjustment):
         """Adjust stock and create transaction record"""
-        stock = await StockService.get_stock_by_product_id(db, product_id)
+        product = await ProductService.get_product_by_id(db, product_id)
+        stock = product.stock
+        if not stock:
+            raise HTTPException(status_code=404, detail="Stock not found")
 
         old_quantity = stock.quantity_on_hand
         new_quantity = adjustment.new_quantity
@@ -212,6 +216,29 @@ class StockService:
         db.add(transaction)
         await db.commit()
         await db.refresh(transaction)
+
+        # Trigger low stock email if new stock <= reorder level
+        if new_quantity <= product.reorder_level:
+            try:
+                from app.warehouse_service import WarehouseService
+                summary = await WarehouseService.get_product_warehouse_summary(db, product.id)
+                breakdown = [
+                    {"warehouse_name": s.warehouse_name, "total_quantity": s.total_quantity, "nearest_expiry": str(s.nearest_expiry) if s.nearest_expiry else None}
+                    for s in summary
+                ]
+            except Exception:
+                breakdown = []
+            try:
+                send_low_stock_email(
+                    product_name=product.name,
+                    sku=product.sku,
+                    current_stock=new_quantity,
+                    reorder_level=product.reorder_level,
+                    warehouse_breakdown=breakdown,
+                )
+            except Exception as e:
+                print(f"[StockService] Low stock alert notification skipped: {e}")
+
         return transaction
 
 
@@ -260,6 +287,29 @@ class TransactionService:
         
         await db.commit()
         await db.refresh(db_transaction)
+
+        # Trigger low stock email if outbound drop leads to stock <= reorder_level
+        if transaction_data.transaction_type == TransactionType.OUTBOUND and stock.quantity_on_hand <= product.reorder_level:
+            try:
+                from app.warehouse_service import WarehouseService
+                summary = await WarehouseService.get_product_warehouse_summary(db, product.id)
+                breakdown = [
+                    {"warehouse_name": s.warehouse_name, "total_quantity": s.total_quantity, "nearest_expiry": str(s.nearest_expiry) if s.nearest_expiry else None}
+                    for s in summary
+                ]
+            except Exception:
+                breakdown = []
+            try:
+                send_low_stock_email(
+                    product_name=product.name,
+                    sku=product.sku,
+                    current_stock=stock.quantity_on_hand,
+                    reorder_level=product.reorder_level,
+                    warehouse_breakdown=breakdown,
+                )
+            except Exception as e:
+                print(f"[TransactionService] Low stock alert notification skipped: {e}")
+
         return db_transaction
     
     @staticmethod

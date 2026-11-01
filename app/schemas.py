@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -158,3 +158,117 @@ class LowStockRead(BaseModel):
     quantity_on_hand: int
     reorder_level: int
     shortage: int
+
+
+# ============ WAREHOUSE & BATCHES ============
+
+class WarehouseCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    code: str = Field(..., min_length=2, max_length=20)
+    city: str = Field(..., min_length=1, max_length=100)
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+
+
+class WarehouseRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    code: str
+    city: str
+    latitude: float
+    longitude: float
+    is_active: bool
+    created_at: datetime
+
+
+class StockBatchCreate(BaseModel):
+    product_id: int
+    warehouse_id: int
+    batch_number: str = Field(..., min_length=1, max_length=50)
+    quantity: int = Field(..., gt=0)
+    expiry_date: date
+
+
+class StockBatchRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    warehouse_id: int
+    batch_number: str
+    quantity: int
+    expiry_date: date
+    created_at: datetime
+
+
+class WarehouseStockSummary(BaseModel):
+    warehouse_id: int
+    warehouse_name: str
+    warehouse_code: str
+    city: str
+    total_quantity: int
+    nearest_expiry: Optional[date] = None
+    batches: List[StockBatchRead]
+
+
+# ============ SMART ORDER ROUTING ============
+
+class SmartRouteRequest(BaseModel):
+    product_id: int
+    quantity: int = Field(..., gt=0)
+    destination_name: str = Field(..., min_length=1, max_length=100)
+    destination_lat: float = Field(..., ge=-90, le=90)
+    destination_lon: float = Field(..., ge=-180, le=180)
+    prioritize_expiry: bool = True
+
+
+class RouteCandidate(BaseModel):
+    warehouse_id: int
+    warehouse_name: str
+    warehouse_code: str
+    city: str
+    distance_km: float
+    estimated_transit_days: int
+    available_quantity: int
+    can_fulfill: bool
+    selected_batch_id: Optional[int] = None
+    selected_batch_number: Optional[str] = None
+    nearest_expiry_date: Optional[date] = None
+    days_until_expiry: Optional[int] = None
+    has_expiring_soon_batch: bool = False
+    score: float
+    is_recommended: bool = False
+    recommendation_reason: str
+
+
+class SmartRouteResponse(BaseModel):
+    product_id: int
+    product_name: str
+    sku: str
+    requested_quantity: int
+    destination_name: str
+    recommended_warehouse_id: Optional[int] = None
+    candidates: List[RouteCandidate]
+
+
+class FulfillDispatchRequest(BaseModel):
+    product_id: int
+    warehouse_id: int
+    quantity: int = Field(..., gt=0)
+    destination_name: str = Field(..., min_length=1, max_length=100)
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class FulfillDispatchResponse(BaseModel):
+    transaction_id: int
+    product_id: int
+    warehouse_id: int
+    warehouse_name: str
+    dispatched_quantity: int
+    remaining_product_stock: int
+    reorder_level: int
+    is_low_stock_now: bool
+    low_stock_email_sent: bool
+    alert_message: Optional[str] = None

@@ -10,6 +10,8 @@ from app.auth import create_access_token, get_current_user, require_admin, requi
 from app.models import User
 from app.services import CategoryService, ProductService, StockService, TransactionService
 from app.user_service import UserService
+from app.warehouse_service import WarehouseService
+from app.email_service import send_low_stock_email
 from app.schemas import (
     CategoryCreate,
     CategoryRead,
@@ -26,6 +28,15 @@ from app.schemas import (
     UserCreate,
     UserRead,
     Token,
+    WarehouseCreate,
+    WarehouseRead,
+    StockBatchCreate,
+    StockBatchRead,
+    WarehouseStockSummary,
+    SmartRouteRequest,
+    SmartRouteResponse,
+    FulfillDispatchRequest,
+    FulfillDispatchResponse,
 )
 
 app = FastAPI(title="Inventory Management", version="1.0.0")
@@ -64,7 +75,7 @@ async def db_check(db: AsyncSession = Depends(get_db)):
 
 @app.post("/auth/register", response_model=UserRead, status_code=201)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Register a new user. Open for initial setup—protect this in production."""
+    """Register a new user. Open for initial setup — protect this in production."""
     return await UserService.create_user(db, user_data)
 
 @app.post("/auth/login", response_model=Token)
@@ -231,3 +242,89 @@ async def get_transactions(
 ):
     """Get all transactions for a product."""
     return await TransactionService.get_transactions_by_product(db, product_id)
+
+# ============ WAREHOUSES & SMART ORDER ROUTING ============
+
+@app.get("/warehouses", response_model=list[WarehouseRead])
+async def list_warehouses(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """List all active warehouses."""
+    return await WarehouseService.list_warehouses(db)
+
+@app.post("/warehouses", response_model=WarehouseRead, status_code=201)
+async def create_warehouse(
+    data: WarehouseCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_manager),
+):
+    """Create a new warehouse (manager/admin)."""
+    return await WarehouseService.create_warehouse(db, data)
+
+@app.post("/warehouses/seed-demo")
+async def seed_demo_warehouses(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Idempotently seed 3 strategic demo warehouses and realistic expiring inventory batches."""
+    return await WarehouseService.seed_demo_warehouses_and_batches(db, current_user.username)
+
+@app.get("/stock/{product_id}/warehouses", response_model=list[WarehouseStockSummary])
+async def get_product_warehouse_stock(
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Get stock distribution and batch expiry dates across warehouses for a product."""
+    return await WarehouseService.get_product_warehouse_summary(db, product_id)
+
+@app.post("/batches", response_model=StockBatchRead, status_code=201)
+async def create_stock_batch(
+    data: StockBatchCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Receive a new inventory batch into a specific warehouse."""
+    return await WarehouseService.add_stock_batch(db, data, current_user.username)
+
+@app.post("/warehouses/smart-route", response_model=SmartRouteResponse)
+async def compute_smart_order_routing(
+    request_data: SmartRouteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """
+    Calculate optimal warehouse routing for an order considering
+    speed (Haversine distance), stock availability, and FEFO expiry urgency.
+    """
+    return await WarehouseService.compute_smart_route(db, request_data)
+
+@app.post("/warehouses/fulfill-dispatch", response_model=FulfillDispatchResponse)
+async def fulfill_order_dispatch(
+    request_data: FulfillDispatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """
+    Fulfill and dispatch an order from a chosen warehouse.
+    Deducts batches via FEFO order, creates an OUTBOUND transaction,
+    and automatically triggers a free low-stock warning email if threshold is crossed.
+    """
+    return await WarehouseService.fulfill_dispatch(db, request_data, current_user.username)
+
+@app.post("/alerts/test-email")
+async def test_low_stock_email(
+    _: User = Depends(require_manager),
+):
+    """Test the low-stock alert email notification setup."""
+    sent, msg = send_low_stock_email(
+        product_name="Sample Diagnostic Item",
+        sku="TEST-SKU-999",
+        current_stock=2,
+        reorder_level=10,
+        warehouse_breakdown=[
+            {"warehouse_name": "Warehouse A — East Coast Hub", "total_quantity": 2, "nearest_expiry": "2026-11-20"}
+        ],
+    )
+    return {"sent": sent, "message": msg}

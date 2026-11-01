@@ -27,4 +27,10 @@ export const queryKeys = {
     root: () => ["transactions"] as const,
     byProduct: (productId: number) => ["transactions", productId] as const,
   },
+  warehouses: {
+    root: () => ["warehouses"] as const,
+    all: () => ["warehouses", "all"] as const,
+    productBatches: (productId: number) =>
+      ["warehouses", "product-batches", productId] as const,
+  },
 } as const;

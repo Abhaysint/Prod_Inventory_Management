@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { Ban, Package, Pencil, Plus, X } from "lucide-react";
+import { Ban, Package, Pencil, Plus, Warehouse, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
@@ -19,6 +19,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import type { ProductRead, StockRead } from "@/types/api";
 import { ProductFormDialog } from "./ProductFormDialog";
 import { StockCell } from "./StockCell";
+import { WarehouseBatchesDialog } from "./WarehouseBatchesDialog";
 import {
   useCategoryList,
   useCategoryMap,
@@ -87,6 +88,7 @@ export default function ProductsPage() {
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<ProductRead | null>(null);
   const [deactivating, setDeactivating] = useState<ProductRead | null>(null);
+  const [warehouseProduct, setWarehouseProduct] = useState<ProductRead | null>(null);
 
   const deactivateMutation = useDeactivateProduct();
 
@@ -314,29 +316,38 @@ export default function ProductsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {canManage ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Edit ${product.name}`}
-                              onClick={() => openEdit(product)}
-                            >
-                              <Pencil aria-hidden="true" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              aria-label={`Deactivate ${product.name}`}
-                              onClick={() => setDeactivating(product)}
-                            >
-                              <Ban aria-hidden="true" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="View warehouse stock & batch expiry"
+                            aria-label={`View warehouse stock for ${product.name}`}
+                            onClick={() => setWarehouseProduct(product)}
+                          >
+                            <Warehouse className="h-4 w-4 text-muted-foreground hover:text-foreground" aria-hidden="true" />
+                          </Button>
+                          {canManage && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Edit ${product.name}`}
+                                onClick={() => openEdit(product)}
+                              >
+                                <Pencil aria-hidden="true" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                aria-label={`Deactivate ${product.name}`}
+                                onClick={() => setDeactivating(product)}
+                              >
+                                <Ban aria-hidden="true" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -403,6 +414,14 @@ export default function ProductsPage() {
           id: c.id,
           name: c.name,
         }))}
+      />
+
+      <WarehouseBatchesDialog
+        product={warehouseProduct}
+        open={warehouseProduct !== null}
+        onOpenChange={(open) => {
+          if (!open) setWarehouseProduct(null);
+        }}
       />
 
       <ConfirmDialog

@@ -14,6 +14,7 @@ const StockAdjustmentPage = lazy(
 const ProductTransactionsPage = lazy(
   () => import("@/features/transactions/ProductTransactionsPage")
 );
+const DispatchPage = lazy(() => import("@/features/dispatch/DispatchPage"));
 
 const pageFallback = <RouteFallback />;
 
@@ -73,6 +74,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={pageFallback}>
                 <ProductTransactionsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "dispatch",
+            element: (
+              <Suspense fallback={pageFallback}>
+                <DispatchPage />
               </Suspense>
             ),
           },

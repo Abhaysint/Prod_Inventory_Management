@@ -1,4 +1,4 @@
-import { FolderTree, LayoutDashboard, Package, SlidersHorizontal } from "lucide-react";
+import { FolderTree, LayoutDashboard, Package, SlidersHorizontal, Truck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/products", label: "Products", icon: Package },
   { to: "/categories", label: "Categories", icon: FolderTree },
   { to: "/stock-adjustment", label: "Stock Adjustment", icon: SlidersHorizontal },
+  { to: "/dispatch", label: "Smart Dispatch", icon: Truck },
 ];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

@@ -8,6 +8,7 @@ const SECTION_TITLES: { match: (pathname: string) => boolean; title: string }[] 
   { match: (p) => p.startsWith("/products"), title: "Products" },
   { match: (p) => p.startsWith("/categories"), title: "Categories" },
   { match: (p) => p.startsWith("/stock-adjustment"), title: "Stock Adjustment" },
+  { match: (p) => p.startsWith("/dispatch"), title: "Smart Order Dispatch" },
   { match: (p) => p.startsWith("/transactions"), title: "Transactions" },
 ];
 

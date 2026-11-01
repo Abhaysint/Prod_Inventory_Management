@@ -105,7 +105,38 @@ Complete, immutable ledger tracking all inbound receipts, outbound sales, return
 
 ---
 
-### 6. Mobile Usability & Responsive Polish (375px+)
+### 6. Multi-Warehouse Management & Batch Expiration Tracking (FEFO)
+Scale beyond single-warehouse limits with distributed regional fulfillment hubs and granular lot/batch expiration control.
+
+- **Regional Warehouse Hubs**: Distributed warehouses modeled with real geographic coordinates (`latitude`, `longitude`, `city`, `code`) across major logistics corridors (e.g. East Coast Hub `WH-EAST` in Newark NJ, Central Hub `WH-CENT` in Dallas TX, and West Coast Hub `WH-WEST` in Fresno CA).
+- **Batch & Lot Level Traceability**: Perishables and shelf-life-sensitive inventory are tracked via `StockBatch` records storing `batch_number`, `quantity`, and `expiry_date`.
+- **FEFO (First-Expired, First-Out) Invariant**: When fulfilling dispatches or inspecting batch stock, the system prioritizes batches with the nearest expiration date, preventing inventory spoilage and write-offs.
+- **Per-Product Warehouse Breakdown Modal**: Click the warehouse building icon on any product in the catalog to open an interactive dialog displaying stock distribution and expiration countdown badges across all fulfillment hubs.
+
+---
+
+### 7. Smart Order Dispatch & Automated Low-Stock Email Alerts
+An intelligent routing engine that pairs physical geography with inventory perishability to calculate the optimal fulfillment hub in milliseconds.
+
+![Smart Order Routing & Dispatch](docs/screenshots/smart_dispatch.png)
+
+- **Smart Routing Engine**:
+  - **Haversine Geodetic Math**: Calculates great-circle physical distance in kilometers between customer delivery coordinates and regional warehouse hubs.
+  - **Transit Time Estimation**: Computes estimated ground freight delivery duration ($\approx 600\text{ km/day}$).
+  - **Multi-Factor Scoring & FEFO Urgency**: Balances delivery speed with batch freshness. When **FEFO Urgency Mode** is active, warehouses with batches expiring within 30 days receive a dynamic priority bonus so urgent stock is dispatched before fresher inventory.
+  - **Transparent Explanations**: Generates plain-English reasons for why a warehouse is recommended (e.g. *"FEFO Priority: Dispatches batch LOT-2026-B01 expiring in 18 days while still reaching Chicago in ~2 days"*).
+- **One-Click Order Fulfillment**:
+  - Automatically deducts order quantity from the earliest-expiring batches in the selected warehouse.
+  - Keeps aggregate product stock (`Stock.quantity_on_hand`) synchronized in real time.
+  - Generates an immutable `OUTBOUND` transaction with lot numbers and destination notes in the audit trail.
+- **100% Free Low-Stock Email Alerts**:
+  - Evaluates remaining inventory against the product's `reorder_level` immediately upon dispatch or adjustment.
+  - Dispatches an automated HTML alert email with a complete warehouse breakdown table via standard Python `smtplib` (compatible with free Gmail SMTP App Passwords).
+  - Includes a zero-config **Safe Demo Mode** that safely logs formatted alerts to the console and UI if SMTP credentials are not configured, guaranteeing zero runtime crashes.
+
+---
+
+### 8. Mobile Usability & Responsive Polish (375px+)
 Engineered to work seamlessly on phones and handheld warehouse scanners down to 375px viewport widths.
 
 ![Mobile View](docs/screenshots/mobile_responsive.png)
@@ -126,6 +157,7 @@ Engineered to work seamlessly on phones and handheld warehouse scanners down to 
 | **Forms & Validation** | **React Hook Form** + **Zod** | Client-side schema parity with backend Pydantic models |
 | **Backend Framework** | **FastAPI** + **Python 3.12** | Async handlers, Pydantic validation, OAuth2 password request flow |
 | **Database & ORM** | **PostgreSQL 16** + **SQLAlchemy 2.0** | Async database access via `asyncpg`, schema migrations via `alembic` |
+| **Smart Routing & Alerts** | **Haversine Geodesic Math** + **Python smtplib** | Multi-warehouse order routing, FEFO batch prioritization, and free Gmail SMTP low-stock email triggers |
 | **Container & Cloud** | **Docker** + **Render** + **Vercel** | Multi-stage Docker build, zero hardcoded URLs, SPA rewrites |
 
 ---
